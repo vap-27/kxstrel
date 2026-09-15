@@ -4,7 +4,7 @@ spectre-mcp==1.0.3
 # Gateway stack. Deliberately browser-free: no chromium/chrome/puppeteer/
 # playwright/selenium anywhere in this tree (see scripts/audit_browserless.py).
 fastapi>=0.141.1
-uvicorn[standard]>=0.30
+uvicorn[standard]>=0.52.4
 fastmcp>=4.0.3
 pydantic>=2.10
 pydantic-settings>=2.5
