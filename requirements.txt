@@ -6,7 +6,7 @@ spectre-mcp==1.0.3
 fastapi>=0.141.1
 uvicorn[standard]>=0.30
 fastmcp>=4.0.3
-pydantic>=2.10
+pydantic>=2.13.5
 pydantic-settings>=2.5
 cryptography>=44
 asyncpg>=0.31.0
