@@ -5,47 +5,6 @@ All notable changes to this gateway are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Changed
-
-- The backup store now keeps **versioned snapshots** instead of mirroring the
-  primary in place. Each run appends a new snapshot (an index row in
-  `backup_snapshots` keyed by a microsecond UTC timestamp, plus
-  `backup_accounts`, `backup_schema_migrations`, `backup_tool_flags` and
-  `backup_admin_audit` in the same partition), so a bad state on the primary
-  can no longer overwrite the previous good copy — the old design upserted
-  every table and delete-reconciled accounts, which is exactly what it did.
-  `schema_migrations` is captured too, and the tables the mirror design left
-  in the backup store are kept but unused (not dropped).
-- Snapshots older than the new `BACKUP_RETENTION_DAYS` (default 10, minimum
-  1 day) are pruned after each successful run: child rows first, then the
-  index row, and orphan rows whose index row already vanished are swept as
-  well. A pruning failure is logged and surfaced as `prune_error` but never
-  fails the run. `BackupManager.run()` now reports the snapshot timestamp,
-  the per-table row counts, how many snapshots were pruned and the oldest one
-  kept.
-
-### Added
-
-- Two narrow, **read-only** snapshot fallbacks for accounts that cannot be
-  used. If the primary store is unreachable or holds no account row at all,
-  the Spectre pool is hydrated from the newest snapshot (`restored_from_snapshot`
-  in `/status`, `/diagnostics` and the console); if a stored credential cannot
-  be decrypted, the newest snapshot's row for that same label is tried before
-  the account is reported `CONFIG_ERROR` (`x_session.restored_labels`). A
-  primary that holds accounts — even all disabled — stays authoritative, and
-  neither path writes to the primary store.
-- `POST /admin/api/backup/restore` (admin auth + the CSRF guard, plus a
-  per-row **Restore** button in the console's Backup view) writes a snapshot
-  back into the primary store — newest by default, an explicit `snapshot_at`
-  otherwise. It upserts and resurrects accounts (never deleting those that
-  exist only on the primary), re-applies tool flags, re-inserts audit rows
-  idempotently and re-hydrates the pool afterwards. This is the only path
-  that writes a snapshot into the primary, so resurrecting a deleted account
-  stays deliberate; validation merely reporting an expired session never
-  swaps in older cookies (see `docs/backup-restore.md`).
-
 ## [2.1.0] - 2026-09-15
 
 Rebrand release. The product is now **Kxstrel X MCP** - a naming change only; no runtime behaviour changed. Two of the renamed identifiers are operationally visible, and they are called out below.
@@ -82,6 +41,24 @@ verification toolchain, and makes the storage layer portable across TiDB
 (MySQL), Postgres, CockroachDB and SQLite.
 
 ### Added
+
+- Two narrow, **read-only** snapshot fallbacks for accounts that cannot be
+  used. If the primary store is unreachable or holds no account row at all,
+  the Spectre pool is hydrated from the newest snapshot (`restored_from_snapshot`
+  in `/status`, `/diagnostics` and the console); if a stored credential cannot
+  be decrypted, the newest snapshot's row for that same label is tried before
+  the account is reported `CONFIG_ERROR` (`x_session.restored_labels`). A
+  primary that holds accounts — even all disabled — stays authoritative, and
+  neither path writes to the primary store.
+- `POST /admin/api/backup/restore` (admin auth + the CSRF guard, plus a
+  per-row **Restore** button in the console's Backup view) writes a snapshot
+  back into the primary store — newest by default, an explicit `snapshot_at`
+  otherwise. It upserts and resurrects accounts (never deleting those that
+  exist only on the primary), re-applies tool flags, re-inserts audit rows
+  idempotently and re-hydrates the pool afterwards. This is the only path
+  that writes a snapshot into the primary, so resurrecting a deleted account
+  stays deliberate; validation merely reporting an expired session never
+  swaps in older cookies (see `docs/backup-restore.md`).
 
 - Result enrichment in the tool middleware, starting with `schedule_tweet`:
   its result now carries `scheduled_id` plus `scheduled_id_note`, recovered
@@ -150,6 +127,23 @@ verification toolchain, and makes the storage layer portable across TiDB
   unique coverage dropped).
 
 ### Changed
+
+- The backup store now keeps **versioned snapshots** instead of mirroring the
+  primary in place. Each run appends a new snapshot (an index row in
+  `backup_snapshots` keyed by a microsecond UTC timestamp, plus
+  `backup_accounts`, `backup_schema_migrations`, `backup_tool_flags` and
+  `backup_admin_audit` in the same partition), so a bad state on the primary
+  can no longer overwrite the previous good copy — the old design upserted
+  every table and delete-reconciled accounts, which is exactly what it did.
+  `schema_migrations` is captured too, and the tables the mirror design left
+  in the backup store are kept but unused (not dropped).
+- Snapshots older than the new `BACKUP_RETENTION_DAYS` (default 10, minimum
+  1 day) are pruned after each successful run: child rows first, then the
+  index row, and orphan rows whose index row already vanished are swept as
+  well. A pruning failure is logged and surfaced as `prune_error` but never
+  fails the run. `BackupManager.run()` now reports the snapshot timestamp,
+  the per-table row counts, how many snapshots were pruned and the oldest one
+  kept.
 
 - The admin console's theme control is now a three-way labelled segmented
   group — **System** (the new default), **Light**, **Dark** — of three plain
