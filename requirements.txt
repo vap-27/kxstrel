@@ -1,0 +1,20 @@
+# Pinned X backend (verified browserless: direct GraphQL/REST, cookie auth).
+spectre-mcp==1.0.3
+
+# Gateway stack. Deliberately browser-free: no chromium/chrome/puppeteer/
+# playwright/selenium anywhere in this tree (see scripts/audit_browserless.py).
+fastapi>=0.141.1
+uvicorn[standard]>=0.30
+fastmcp>=4.0.3
+pydantic>=2.10
+pydantic-settings>=2.5
+cryptography>=44
+asyncpg>=0.31.0
+aiomysql>=0.2
+redis>=8.1.0
+prometheus-client>=0.21
+httpx>=0.27
+
+# Dev / test only.
+pytest>=9.1.1
+pytest-asyncio>=0.24

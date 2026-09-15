@@ -1,0 +1,19 @@
+.env
+data/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+attachments/
+ADMIN_TOKEN
+MCP_ACCESS_TOKEN
+CREDENTIAL_ENCRYPTION_KEY
+
+# live probe / hardening artifacts (operator-local, may contain X data)
+live_mcp_probe.json
+*.bak
+
+# local probe transcripts (may contain live X response data)
+probe-transcript*.txt
+post-deploy-transcript*.txt
+*-transcript.txt

@@ -1,0 +1,31 @@
+# Render blueprint: web gateway only. Storage is external by design:
+#   DATABASE_URL         -> TiDB (MySQL, 5GB free) or any Postgres
+#   BACKUP_DATABASE_URL  -> CockroachDB / other Postgres-compatible store
+#   REDIS_URL            -> optional Redis (shared admin sessions)
+services:
+  - type: web
+    name: x-mcp
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: MCP_ACCESS_TOKEN
+        sync: false # set in Render dashboard; rotate by changing value + redeploy
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: CREDENTIAL_ENCRYPTION_KEY
+        sync: false # generate: python scripts/setup_account.py --generate-key
+      - key: DATABASE_URL
+        sync: false # primary store, e.g. mysql://... (TiDB) or postgresql://...
+      - key: BACKUP_DATABASE_URL
+        sync: false # optional secondary store for scheduled backups
+      - key: REDIS_URL
+        sync: false # optional; shared admin-UI sessions across instances
+      - key: PUBLIC_BASE_URL
+        sync: false # optional, NON-secret: public origin advertised to MCP clients
+      - key: LOG_LEVEL
+        sync: false # operator-entered: INFO (default when unset), WARNING, ERROR
+      - key: SESSION_CHECK_INTERVAL_SECONDS
+        sync: false # operator-entered: seconds between X session checks (default 1800)
