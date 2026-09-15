@@ -9,25 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Rebranded from `x-mcp` to **Kxstrel X MCP** (identifier slug
-  `kxstrel-x-mcp`). The display name reaches the console title and brand, the
-  FastAPI title, and `APP_NAME` - so `/health`, `/status` and `/diagnostics`
-  report it. Machine identifiers use the slug instead: logger names are now
-  `kxstrel-x-mcp.<module>` and the image workdir is `/srv/kxstrel-x-mcp`.
-  Deliberately **unchanged**: the Render service name (`render.yaml` `name:`)
-  and the live hostnames, because renaming a live service identity would create
-  a new service and a new URL; and database names, which are parsed from the DSN
-  rather than derived from the brand.
-- Every remaining `xmcp` identifier was renamed to `kxstrel` too: the
-  Prometheus metric names (`kxstrel_http_requests_total`,
-  `kxstrel_tool_calls_total`, `kxstrel_admin_actions_total`,
-  `kxstrel_tool_duration_ms`, `kxstrel_x_session_ok`, `kxstrel_db_ok`), the
-  admin session cookie and its Redis key prefix, the console theme storage key,
-  the `KXSTREL_*` script environment variables, the internal registry
-  attributes, and the sample database names. Two operational consequences:
-  any dashboard or alert referencing the old metric names must be updated, and
-  existing admin sessions are invalidated by the cookie and Redis-key change,
-  so operators sign in once more.
 - The backup store now keeps **versioned snapshots** instead of mirroring the
   primary in place. Each run appends a new snapshot (an index row in
   `backup_snapshots` keyed by a microsecond UTC timestamp, plus
@@ -64,6 +45,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that writes a snapshot into the primary, so resurrecting a deleted account
   stays deliberate; validation merely reporting an expired session never
   swaps in older cookies (see `docs/backup-restore.md`).
+
+## [2.1.0] - 2026-09-15
+
+Rebrand release. The product is now **Kxstrel X MCP** - a naming change only; no runtime behaviour changed. Two of the renamed identifiers are operationally visible, and they are called out below.
+
+### Changed
+
+- Rebranded from `x-mcp` to **Kxstrel X MCP** (identifier slug
+  `kxstrel-x-mcp`). The display name reaches the console title and brand, the
+  FastAPI title, and `APP_NAME` - so `/health`, `/status` and `/diagnostics`
+  report it. Machine identifiers use the slug instead: logger names are now
+  `kxstrel-x-mcp.<module>` and the image workdir is `/srv/kxstrel-x-mcp`.
+  Deliberately **unchanged**: the Render service name (`render.yaml` `name:`)
+  and the live hostnames, because renaming a live service identity would create
+  a new service and a new URL; and database names, which are parsed from the DSN
+  rather than derived from the brand.
+- Every remaining `xmcp` identifier was renamed to `kxstrel` too: the
+  Prometheus metric names (`kxstrel_http_requests_total`,
+  `kxstrel_tool_calls_total`, `kxstrel_admin_actions_total`,
+  `kxstrel_tool_duration_ms`, `kxstrel_x_session_ok`, `kxstrel_db_ok`), the
+  admin session cookie and its Redis key prefix, the console theme storage key,
+  the `KXSTREL_*` script environment variables, the internal registry
+  attributes, and the sample database names. Two operational consequences:
+  any dashboard or alert referencing the old metric names must be updated, and
+  existing admin sessions are invalidated by the cookie and Redis-key change,
+  so operators sign in once more.
 
 ## [2.0.0] - 2026-09-14
 

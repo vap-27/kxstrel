@@ -35,6 +35,7 @@ A hardened, remotely-hosted **Model Context Protocol (MCP)** gateway for X (form
 - [Credential Rotation](#-credential-rotation)
 - [Security & Threat Model](#-security--threat-model)
 - [Known Limitations & Upstream Caveats](#-known-limitations--upstream-caveats)
+- [X Rate Limits & How They Are Learned](#x-rate-limits--how-they-are-learned)
 - [API Endpoints Reference](#-api-endpoints-reference)
 - [Troubleshooting Guide](#-troubleshooting-guide)
 - [Self-Verification & Testing](#-self-verification--testing)
@@ -111,8 +112,8 @@ This utility scans manifests, source files, and installed distributions, immedia
 | Evidence Level | Default Mode | Strict Mode (`--strict-binaries` or `BROWSERLESS_AUDIT_STRICT=1`) |
 | :--- | :--- | :--- |
 | **Forbidden dependency in requirements/sources** | ❌ **Fail** | ❌ **Fail** |
-| **Browser executable on host `PATH`** | ℹ️ Pass (logged as runner note) | ❌ **Fail** |
-| **Active browser process on host** | ℹ️ Pass (logged as runner note) | ℹ️ Pass (logged as runner note) |
+| **Browser executable on host `PATH`** | ℹ Pass (logged as runner note) | ❌ **Fail** |
+| **Active browser process on host** | ℹ Pass (logged as runner note) | ℹ Pass (logged as runner note) |
 
 > [!NOTE]
 > `curl-cffi` includes TLS presets named after browsers (e.g. `impersonate="chrome120"`). This represents a cryptographic TLS handshake fingerprint in a standard HTTP client, not a browser engine. The audit script explicitly allowlists this string.
@@ -124,7 +125,7 @@ This utility scans manifests, source files, and installed distributions, immedia
 
 ---
 
-## ⚙️ How Spectre Engine is Integrated
+## ⚙ How Spectre Engine is Integrated
 
 - **Pinned Upstream Version**: Strictly locked to `spectre-mcp==1.0.3` in `requirements.txt` (verified: FastMCP stdio server, ~104 tools, dependencies strictly limited to `curl-cffi`, `fastmcp`, `loguru`, `pydantic`, and `twscrape`).
 - **Native Mounting**: The gateway imports Spectre's internal `mcp` FastMCP object and exposes it remotely using `mcp.http_app(path="/")` mounted directly at `/mcp` (Streamable HTTP). No tool logic or auth routines are rewritten.
@@ -153,7 +154,7 @@ flowchart TD
 | Classification | Action Types & Examples | Security Controls & Enforcement |
 | :--- | :--- | :--- |
 | 🟢 **Read-Only Tools** | `get_user`, `search_tweets`, `get_thread`, `list_bookmarks`, `pool_status` | Safe for automated reasoning loops. No state changes on X. |
-| 🟡 **Write / Destructive Tools** | `post_tweet`, `delete_tweet`, `like`, `unlike`, `retweet`, `send_dm`, `follow`, `unfollow` | Flagged with `⚠️` descriptions in protocol schemas. Never invoked as a side effect of read actions. Audited in dashboard. |
+| 🟡 **Write / Destructive Tools** | `post_tweet`, `delete_tweet`, `like`, `unlike`, `retweet`, `send_dm`, `follow`, `unfollow` | Flagged with `⚠` descriptions in protocol schemas. Never invoked as a side effect of read actions. Audited in dashboard. |
 | 🔴 **Hard-Blocked Tools** | `upload_media`, `update_profile_image`, `update_profile_banner`, `remove_account`, or any call with `file_path` | **Inflexible security block**: Prevent arbitrary server-side file exfiltration. Returns a strict error payload. |
 
 ---
@@ -223,8 +224,8 @@ No automated browser login is required—extract the session cookies directly fr
 
 ```bash
 # Clone and enter directory
-git clone https://github.com/yourusername/kxstrel-x-mcp.git
-cd kxstrel-x-mcp
+git clone https://github.com/vap-27/kxstrel.git
+cd kxstrel
 
 # Create and activate virtual environment
 python -m venv .venv
@@ -268,7 +269,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 
 ---
 
-## ☁️ Production Deployment (Render)
+## ☁ Production Deployment (Render)
 
 ### Option A: Render Blueprint (Recommended)
 
@@ -420,7 +421,7 @@ For full step-by-step procedures and zero-downtime instructions, refer to [`docs
 | **MCP Access Token** | Update `MCP_ACCESS_TOKEN` in Render → Deploy | Zero downtime. Existing AI clients must update their bearer header. |
 | **Admin Secret Token** | Update `ADMIN_TOKEN` in Render → Deploy | Zero downtime. Immediately invalidates all active dashboard sessions. |
 | **X Session Cookies** | Re-run `setup_account.py` with fresh cookies | **Zero redeploy, zero restart**. Credentials hot-swap in memory & DB. |
-| **Fernet Encryption Key** | Update `CREDENTIAL_ENCRYPTION_KEY` | ⚠️ Re-encrypts storage. Requires re-submitting account cookies. |
+| **Fernet Encryption Key** | Update `CREDENTIAL_ENCRYPTION_KEY` | ⚠ Re-encrypts storage. Requires re-submitting account cookies. |
 
 ---
 
@@ -436,7 +437,7 @@ For full step-by-step procedures and zero-downtime instructions, refer to [`docs
 
 ---
 
-## ⚠️ Known Limitations & Upstream Caveats
+## ⚠ Known Limitations & Upstream Caveats
 
 Observed behaviour of the pinned `spectre-mcp==1.0.3` tool set, verified against a live account by capturing X's raw GraphQL replies. Two entries are X-side restrictions on the account; one is an upstream client defect. They are documented rather than silently patched, because the gateway does not modify the installed package.
 
@@ -515,6 +516,49 @@ curl -X DELETE https://<your-service>/admin/api/upstream-capture \
 - `CONFIG_ERROR` — Missing encryption key or unreachable database.
 
 ---
+
+## X Rate Limits & How They Are Learned
+
+X applies a per-endpoint request budget. **This gateway does not declare or
+enforce those limits**, and it contains no limit table. The transport
+(`twscrape`) reads the live values off every response and backs off
+accordingly:
+
+| Response header          | Meaning                                |
+| :----------------------- | :------------------------------------- |
+| `x-rate-limit-limit`     | Requests allowed in the current window |
+| `x-rate-limit-remaining` | Requests left in the window            |
+| `x-rate-limit-reset`     | When the window resets                 |
+
+Because the real budget is per account and X changes it without notice,
+**treat the numbers below as indicative, not authoritative.** They are
+community-reported figures - they originate from the Twikit library, which this
+project does not use - and have **not** been verified against this deployment.
+The mapping from our tool names to the underlying calls *is* taken from the
+installed source.
+
+| Our tool              | Underlying call                     | Community-reported limit / 15 min |
+| :-------------------- | :---------------------------------- | --------------------------------: |
+| `get_tweet`           | `TweetDetail`                       |                               150 |
+| `search`              | `SearchTimeline`                    |                                50 |
+| `search_users`        | `SearchTimeline`                    |                                50 |
+| `get_trends`          | `guide.json`                        |                            20,000 |
+| `get_home_timeline`   | `HomeTimeline`                      |                               500 |
+| `get_latest_timeline` | `HomeLatestTimeline`                |                               500 |
+| `get_user`            | `UserByScreenName` / `UserByRestId` |                               500 |
+| `get_followers`       | `Followers`                         |                                50 |
+| `get_following`       | `Following`                         |                               500 |
+| `get_retweeters`      | `Retweeters`                        |                               500 |
+| `get_favoriters`      | `Favoriters`                        |                               500 |
+
+> [!NOTE]
+> The restrictive entries are the ones to design around: `search` and
+> `search_users` share the `SearchTimeline` budget (50), and `get_followers`
+> allows only 50 despite `get_following` allowing 500. Bursts of identical
+> calls are also what X's abuse detection reacts to, which is why the gateway
+> paces repeated identical tool calls by default
+> (`TOOL_MAX_CONCURRENT_IDENTICAL`, `TOOL_MIN_GAP_SECONDS`,
+> `TOOL_GAP_JITTER_SECONDS`).
 
 ## 🛠 Troubleshooting Guide
 
