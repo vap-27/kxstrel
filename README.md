@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/Cost-Zero%20Paid%20API-f59e0b?style=for-the-badge" alt="Zero Paid API">
   <a href="https://mermaid.js.org/"><img src="https://img.shields.io/badge/Diagrams-Mermaid-ff3670?style=for-the-badge&logo=mermaid&logoColor=white" alt="Mermaid Diagrams"></a>
   <a href="https://render.com/"><img src="https://img.shields.io/badge/Deploy-Render%20Ready-46e3b7?style=for-the-badge&logo=render" alt="Deploy to Render"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
 </p>
 
 A hardened, remotely-hosted **Model Context Protocol (MCP)** gateway for X (formerly Twitter). Deploy it once (e.g. on Render) and interface with X from any MCP-compatible AI environment—including **Claude Desktop**, **Claude Code**, **Cursor**, or custom AI agents—without running headless browsers or paying for enterprise API tiers.
@@ -44,6 +45,7 @@ A hardened, remotely-hosted **Model Context Protocol (MCP)** gateway for X (form
 - [API Endpoints Reference](#-api-endpoints-reference)
 - [Troubleshooting Guide](#-troubleshooting-guide)
 - [Self-Verification & Testing](#-self-verification--testing)
+- [License & Disclaimer](#-license--disclaimer)
 
 ---
 
@@ -602,3 +604,15 @@ python scripts/live_mcp_probe.py --live --debug
 ```
 
 For extended client configuration checklists and protocol specifications, see [`docs/invocation.md`](docs/invocation.md) and [`examples/mcp_clients.md`](examples/mcp_clients.md).
+
+---
+
+## 📄 License & Disclaimer
+
+### License
+This project is licensed under the **MIT License**. See the [`LICENSE`](LICENSE) file for the full license text.
+
+### Disclaimer
+**Kxstrel X MCP** is an independent, open-source project and is not affiliated, associated, authorized, endorsed by, or in any way officially connected with X Corp., Twitter, or any of their subsidiaries or affiliates. The official X website is available at [https://x.com](https://x.com).
+
+This software is provided for research, workflow automation, and testing purposes. Users are responsible for adhering to X's Terms of Service, rate limits, and applicable laws and regulations. The authors and contributors assume no liability for account actions or service interruptions.
