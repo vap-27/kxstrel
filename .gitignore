@@ -18,3 +18,7 @@ live_mcp_probe.json
 probe-transcript*.txt
 post-deploy-transcript*.txt
 *-transcript.txt
+
+# release archives
+*.zip
+
