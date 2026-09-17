@@ -93,15 +93,15 @@ class Settings(BaseSettings):
     VALIDATE_ON_STARTUP: bool = True
 
     # --- rate limits (aligned to upstream X user limits) -------------------
-    # Gateway rate limits are aligned with X's native user limits (GraphQL per-endpoint
-    # quotas for searching tweets, reactions, trends, timelines) rather than
-    # custom artificial bottlenecks. Pacing gap delays are disabled by default.
+    # Gateway overall rate limit is raised to 1200/min so clients are bounded by
+    # X's native endpoint limits rather than artificial gateway throttles.
+    # Anti-burst identical-call pacing preserves documented defaults (2 concurrent, 1.5s gap).
     RATE_LIMIT_MCP_PER_MIN: int = 1200
     RATE_LIMIT_ADMIN_PER_MIN: int = 60
     MAX_REQUEST_BYTES: int = 1_000_000
-    TOOL_MAX_CONCURRENT_IDENTICAL: int = 10
-    TOOL_MIN_GAP_SECONDS: float = 0.0
-    TOOL_GAP_JITTER_SECONDS: float = 0.0
+    TOOL_MAX_CONCURRENT_IDENTICAL: int = 2
+    TOOL_MIN_GAP_SECONDS: float = 1.5
+    TOOL_GAP_JITTER_SECONDS: float = 3.0
 
     # --- admin UI / sessions ------------------------------------------------
     # Browser sessions for the admin dashboard: random HttpOnly cookies,
