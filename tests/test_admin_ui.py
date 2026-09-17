@@ -118,3 +118,34 @@ def test_metrics_requires_admin(client):
     assert client.get("/metrics", headers=ADMIN).status_code == 200
     body = client.get("/metrics", headers=ADMIN).text
     assert "kxstrel_http_requests_total" in body
+
+
+def test_overview_syncs_accounts_from_database(client, monkeypatch):
+    _login(client)
+    from app.models import XStatus
+    async def fake_validate(*args, **kwargs):
+        return XStatus.CONNECTED, None
+
+    monkeypatch.setattr(client.app.state.adapter, "_validate", fake_validate)
+
+    # Add an account using bearer
+    r = client.post("/admin/account", headers=ADMIN,
+                    json={"label": "test_sync_acct", "auth_token": "a" * 40,
+                          "ct0": "b" * 160, "enabled": True})
+    assert r.status_code == 200
+
+    # Verify overview syncs from store
+    ov = client.get("/admin/api/overview").json()
+    assert ov["accounts_configured"] >= 1
+    assert ov["accounts_enabled"] >= 1
+    assert ov["x_status"] == "CONNECTED"
+
+    # Verify public /status also reflects configured accounts
+    st = client.get("/status").json()
+    assert st["accounts_configured"] >= 1
+    assert st["accounts_enabled"] >= 1
+
+    # Clean up
+    client.delete("/admin/account/test_sync_acct", headers=ADMIN)
+
+

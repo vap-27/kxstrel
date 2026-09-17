@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 .venv/
 .pytest_cache/
+.pytest_tmp/
 attachments/
 ADMIN_TOKEN
 MCP_ACCESS_TOKEN

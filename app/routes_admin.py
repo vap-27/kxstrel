@@ -194,6 +194,28 @@ async def overview(request: Request):
     usage = {}
     if store is not None:
         try:
+            if not state.db_ok:
+                state.db_ok = await store.ping()
+            if state.db_ok:
+                metas = await store.list_accounts_meta()
+                state.accounts_configured = len(metas)
+                state.accounts_enabled = sum(1 for m in metas if m.get("enabled"))
+                if metas:
+                    from .session_monitor import aggregate_status
+                    enabled_statuses = [
+                        XStatus(m["status"])
+                        for m in metas
+                        if m.get("enabled") and m.get("status")
+                    ]
+                    if enabled_statuses:
+                        state.x_status = aggregate_status(enabled_statuses)
+                    else:
+                        state.x_status = XStatus.NOT_CONFIGURED
+                elif not state.restored_from_snapshot:
+                    state.x_status = XStatus.NOT_CONFIGURED
+        except Exception as exc:
+            log.warning("overview account sync failed: %s", sanitize_error(str(exc)))
+        try:
             usage = await store.usage_summary(days=7)
         except Exception:
             usage = {}

@@ -132,10 +132,10 @@ class SessionMonitor:
             >= self.backup_interval_hours * 3600
 
     # -- session checks -----------------------------------------------------
-    async def _accounts_to_serve(self) -> tuple[list, str | None, bool]:
-        """Enabled accounts to (re)build the pool from, plus the snapshot
-        timestamp when they came from the backup store instead, plus whether
-        the primary store answered at all.
+    async def _accounts_to_serve(self) -> tuple[list, int, str | None, bool]:
+        """Enabled accounts to (re)build the pool from, total configured count,
+        plus the snapshot timestamp when they came from the backup store instead,
+        plus whether the primary store answered at all.
 
         The fallback is deliberately narrow: the primary store stays
         authoritative whenever it is reachable AND holds at least one account
@@ -148,22 +148,36 @@ class SessionMonitor:
             rows = await self.store.get_all_accounts()
         except Exception as exc:
             log.warning("session check: primary store unreadable: %s", sanitize_error(str(exc)))
-        if rows:
-            return [r for r in rows if r.enabled], None, True
+        if rows is not None and rows:
+            return [r for r in rows if r.enabled], len(rows), None, True
+        if rows is not None and not rows:
+            if self.backup_manager is None:
+                return [], 0, None, True
+            try:
+                snapshot_at, snapshot_rows = await self.backup_manager.newest_snapshot_accounts()
+                enabled = [self._record_from_snapshot(r) for r in snapshot_rows if r.get("enabled")]
+                if enabled:
+                    log.warning("session check: primary store yielded no accounts; serving %d account(s) "
+                                "from backup snapshot %s (primary is NOT written)",
+                                len(enabled), snapshot_at)
+                    return enabled, len(snapshot_rows), snapshot_at, True
+            except Exception as exc:
+                log.warning("session check: backup snapshot unreadable: %s", sanitize_error(str(exc)))
+            return [], 0, None, True
         if self.backup_manager is None:
-            return [], None, rows is not None
+            return [], 0, None, False
         try:
             snapshot_at, snapshot_rows = await self.backup_manager.newest_snapshot_accounts()
         except Exception as exc:
             log.warning("session check: backup snapshot unreadable: %s", sanitize_error(str(exc)))
-            return [], None, rows is not None
+            return [], 0, None, False
         enabled = [self._record_from_snapshot(r) for r in snapshot_rows if r.get("enabled")]
         if not enabled:
-            return [], None, rows is not None
-        log.warning("session check: primary store yielded no accounts; serving %d account(s) "
+            return [], len(snapshot_rows), None, False
+        log.warning("session check: primary store unreadable; serving %d account(s) "
                     "from backup snapshot %s (primary is NOT written)",
                     len(enabled), snapshot_at)
-        return enabled, snapshot_at, True
+        return enabled, len(snapshot_rows), snapshot_at, True
 
     @staticmethod
     def _record_from_snapshot(row: dict):
@@ -214,10 +228,11 @@ class SessionMonitor:
             log.warning("session check (%s) skipped: no credential crypto", source)
             return {}
         accounts: list = []
+        total_configured: int = 0
         restored_from: str | None = None
         store_ok = False
         try:
-            accounts, restored_from, store_ok = await self._accounts_to_serve()
+            accounts, total_configured, restored_from, store_ok = await self._accounts_to_serve()
         except Exception as exc:
             log.warning("session check (%s): account lookup failed: %s",
                         source, sanitize_error(str(exc)))
@@ -287,11 +302,10 @@ class SessionMonitor:
         # (store-level fallback) or single corrupt rows (restored_labels).
         self.state.restored_from_snapshot = restored_from or credential_snapshot_at
         self.state.restored_labels = restored_labels
-        if restored_from is not None:
-            # The running account count describes what the gateway is
-            # actually serving; the primary could not answer.
-            self.state.accounts_configured = len(accounts)
-            self.state.accounts_enabled = len(accounts)
+        self.state.accounts_configured = total_configured
+        self.state.accounts_enabled = len(accounts)
+        if store_ok and not self.state.db_ok:
+            self.state.db_ok = True
         failing = [f"{k}={v}" for k, v in results.items() if v != XStatus.CONNECTED.value]
         if not accounts and not store_ok:
             failing.append("account store unreadable, no snapshot to serve from")

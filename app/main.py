@@ -433,6 +433,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                       - datetime.fromisoformat(s.started_at)).total_seconds() if s.started_at else 0.0
         except Exception:
             pass
+        store = app.state.store
+        if store is not None and s.db_ok:
+            try:
+                metas = await store.list_accounts_meta()
+                s.accounts_configured = len(metas)
+                s.accounts_enabled = sum(1 for m in metas if m.get("enabled"))
+            except Exception:
+                pass
         from . import metrics_setup
 
         metrics_setup.observe_x_status(s.x_status.value)
@@ -487,6 +495,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         s: GatewayState = app.state.state
         store = app.state.store
         db_ok = await store.ping() if store is not None else False
+        if store is not None and db_ok:
+            try:
+                metas = await store.list_accounts_meta()
+                s.accounts_configured = len(metas)
+                s.accounts_enabled = sum(1 for m in metas if m.get("enabled"))
+            except Exception:
+                pass
         pool: dict = {}
         adapter: SpectreAdapter | None = app.state.adapter
         if adapter is not None:

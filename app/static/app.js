@@ -275,6 +275,7 @@ function route() {
     else a.removeAttribute("aria-current");
   });
   document.title = `Kxstrel X MCP · ${view}`;
+  refreshStatusPill();
   Promise.resolve(views[view](version)).catch((error) => {
     if (isCurrentRender(version)) showViewError(view, error);
   });
@@ -286,7 +287,7 @@ async function refreshStatusPill() {
   try {
     const s = await api("/admin/api/overview");
     const pill = $("#x-status-pill");
-    pill.replaceWith(Object.assign(statusPill(s.x_status), { id: "x-status-pill" }));
+    if (pill) pill.replaceWith(Object.assign(statusPill(s.x_status), { id: "x-status-pill" }));
   } catch {}
 }
 
@@ -879,6 +880,7 @@ views.backup = async (version = renderVersion) => {
           toast(`Restored ${res.accounts} account(s), ${res.tool_flags} flag(s), `
             + `${res.admin_audit} audit row(s) from ${fmtTime(res.snapshot_at)}`, "ok");
           views.backup();
+          refreshStatusPill();
         } catch (err) { toast(err.message, "error"); restore.disabled = false; restore.textContent = "Restore"; }
       });
 
