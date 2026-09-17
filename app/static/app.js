@@ -857,7 +857,7 @@ views.backup = async (version = renderVersion) => {
 
   /* One row per snapshot, newest first. Restoring writes a snapshot BACK into
      the primary store, the only path that does so: the automatic fallback
-     only re-hydrates the local Spectre pool, so resurrecting a deleted
+     only re-hydrates the local Kxstrel pool, so resurrecting a deleted
      account or repairing a corrupt credential row stays deliberate. */
   function snapshotTable(backup) {
     const rows = backup.snapshots || [];

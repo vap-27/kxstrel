@@ -121,7 +121,7 @@ class SpectreAdapter:
             pass  # fresh pool or already absent — either is fine
         await pool.add_account_cookies(label, f"auth_token={auth_token}; ct0={ct0}")
         self._restrict_pool_file()
-        log.info("spectre pool synced account label=%s", label)
+        log.info("kxstrel pool synced account label=%s", label)
         return True
 
     async def drop_account(self, label: str) -> bool:
@@ -135,7 +135,7 @@ class SpectreAdapter:
         try:
             await pool.delete_accounts([label])
         except Exception as exc:
-            log.warning("spectre pool drop failed label=%s: %s", label, sanitize_error(str(exc)))
+            log.warning("kxstrel pool drop failed label=%s: %s", label, sanitize_error(str(exc)))
             return False
         # Deleted rows can linger in freelist pages of the plaintext cache;
         # VACUUM rewrites the file without them.
@@ -258,3 +258,7 @@ def _classify_exception(exc: Exception) -> XStatus:
                               "dns", "unreachable", "502", "503", "504")):
         return XStatus.X_UNAVAILABLE
     return XStatus.X_UNAVAILABLE
+
+
+# Alias for rebrand cleanliness
+KxstrelAdapter = SpectreAdapter

@@ -78,11 +78,12 @@ class Settings(BaseSettings):
     # request-derived origin is used instead (see app/security.py).
     PUBLIC_BASE_URL: str = ""
 
-    # --- spectre local pool cache -----------------------------------------
-    # Spectre/twscrape keeps its own sqlite account pool. This file is only a
-    # local cache: the primary DB is the source of truth and the pool is
-    # rebuilt from it on every startup, so losing this file is harmless.
-    SPECTRE_DB_PATH: str = "./data/spectre-accounts.db"
+    # --- local account pool cache -----------------------------------------
+    # The local sqlite pool file (kxstrel-accs.db) is only an ephemeral cache:
+    # the primary DB is the source of truth and the pool is rebuilt from it
+    # on every startup, so losing this file is harmless.
+    SPECTRE_DB_PATH: str = "./data/kxstrel-accs.db"
+    KXSTREL_DB_PATH: str = ""
 
     # --- session health ----------------------------------------------------
     # Lightweight background re-validation cadence. Clamped to >= 300s so the
@@ -91,19 +92,16 @@ class Settings(BaseSettings):
     SESSION_CHECK_TIMEOUT_SECONDS: int = 45
     VALIDATE_ON_STARTUP: bool = True
 
-    # --- abuse protection --------------------------------------------------
-    RATE_LIMIT_MCP_PER_MIN: int = 120
-    RATE_LIMIT_ADMIN_PER_MIN: int = 20
+    # --- rate limits (aligned to upstream X user limits) -------------------
+    # Gateway rate limits are aligned with X's native user limits (GraphQL per-endpoint
+    # quotas for searching tweets, reactions, trends, timelines) rather than
+    # custom artificial bottlenecks. Pacing gap delays are disabled by default.
+    RATE_LIMIT_MCP_PER_MIN: int = 1200
+    RATE_LIMIT_ADMIN_PER_MIN: int = 60
     MAX_REQUEST_BYTES: int = 1_000_000
-    # Per-caller, per-tool concurrency: at most this many identical calls run
-    # at once; further identical calls are refused (not queued) with a
-    # retry-after hint. Identical follow-up calls that overlap are additionally
-    # spaced by TOOL_MIN_GAP_SECONDS + uniform(0, TOOL_GAP_JITTER_SECONDS) —
-    # the jitter matters, a perfectly regular cadence is itself a signature.
-    # Different tools and different callers never block each other.
-    TOOL_MAX_CONCURRENT_IDENTICAL: int = 2
-    TOOL_MIN_GAP_SECONDS: float = 1.5
-    TOOL_GAP_JITTER_SECONDS: float = 3.0
+    TOOL_MAX_CONCURRENT_IDENTICAL: int = 10
+    TOOL_MIN_GAP_SECONDS: float = 0.0
+    TOOL_GAP_JITTER_SECONDS: float = 0.0
 
     # --- admin UI / sessions ------------------------------------------------
     # Browser sessions for the admin dashboard: random HttpOnly cookies,

@@ -30,8 +30,9 @@ EXPOSE 8000
 
 # python -m app.main (not bare uvicorn) so uvicorn runs with log_config=None
 # and our redacting log handler owns every logger; access logs stay off.
-# Spectre's plaintext pool cache goes to ephemeral /tmp, 0600.
-ENV SPECTRE_DB_PATH=/tmp/kxstrel/spectre-accounts.db
+# Local plaintext pool cache goes to ephemeral /tmp, 0600.
+ENV SPECTRE_DB_PATH=/tmp/kxstrel/kxstrel-accs.db
+ENV KXSTREL_DB_PATH=/tmp/kxstrel/kxstrel-accs.db
 
 # Single worker: MCP Streamable HTTP sessions are in-memory.
 # Render injects $PORT; default 8000 for local runs.

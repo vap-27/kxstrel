@@ -114,6 +114,10 @@ _configured = False
 
 def setup_logging(level: str = "INFO") -> logging.Logger:
     global _configured
+    import warnings
+    # Suppress benign MySQL "Table already exists" warnings emitted during CREATE TABLE IF NOT EXISTS
+    warnings.filterwarnings("ignore", message=r".*already exists.*", category=Warning)
+
     register_secrets_from_env()
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())

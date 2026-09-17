@@ -1,6 +1,6 @@
 """Kxstrel X MCP gateway package."""
 
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 
 # Spectre version this gateway was built and verified against.
 # spectre-mcp 1.0.3: FastMCP stdio server, ~104 tools, direct X GraphQL/REST,

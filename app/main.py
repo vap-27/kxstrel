@@ -227,8 +227,8 @@ async def lifespan(app: FastAPI):
         sessions = None
     app.state.admin_sessions = sessions
 
-    # -- spectre adapter + tool middleware -------------------------------------
-    adapter = SpectreAdapter(settings.SPECTRE_DB_PATH)
+    # -- local adapter + tool middleware -------------------------------------
+    adapter = SpectreAdapter(settings.KXSTREL_DB_PATH or settings.SPECTRE_DB_PATH)
     app.state.adapter = adapter
     ver, pin_ok = check_spectre_pin()
     state.spectre_version = ver
@@ -303,9 +303,15 @@ async def lifespan(app: FastAPI):
 
                 state.accounts_configured = len(metas)
                 state.accounts_enabled = sum(1 for m in metas if m["enabled"])
-            # Always restore the enabled accounts into Spectre's local pool.
-            # Validation is optional; persistence restoration is not.
-            await monitor.check_once(source="startup", validate=settings.VALIDATE_ON_STARTUP)
+            # Always restore enabled accounts into the local pool immediately using persisted status.
+            await monitor.check_once(source="startup", validate=False)
+            # Run live upstream validation asynchronously so the server starts serving
+            # immediately without delay or transient false CONFIG_ERROR.
+            if settings.VALIDATE_ON_STARTUP:
+                asyncio.create_task(
+                    monitor.check_once(source="startup-validate", validate=True),
+                    name="startup-session-validate",
+                )
         except Exception as exc:
             log.warning("startup: session restore failed: %s", sanitize_error(str(exc)))
             if state.x_status == XStatus.NOT_CONFIGURED:

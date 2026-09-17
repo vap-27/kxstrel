@@ -387,7 +387,7 @@ flowchart LR
 
 1. **Primary Store (`DATABASE_URL`)**: TiDB Serverless (MySQL-compatible, 5GB free tier), PostgreSQL, or local SQLite for development. Stores encrypted account records, tool enable/disable flags, pruned usage telemetry, and audit records. Automated schema migrations run on startup (`schema_migrations` table).
 2. **Secondary Store (`BACKUP_DATABASE_URL`)**: Optional PostgreSQL-compatible fallback (e.g. CockroachDB Serverless, 10GB free tier). Holds **versioned snapshots** of accounts, `schema_migrations`, tool flags and the audit trail, appended every `BACKUP_INTERVAL_HOURS` (default: 24h) and pruned to `BACKUP_RETENTION_DAYS` (default: 10). See [Backup Snapshots & Restore](#-backup-snapshots--restore).
-3. **Disposable Engine Cache (`SPECTRE_DB_PATH`)**: The local twscrape SQLite pool file is treated as completely ephemeral. It is rebuilt cleanly from the encrypted database records upon every cold start.
+3. **Disposable Engine Cache (`SPECTRE_DB_PATH` / `KXSTREL_DB_PATH`)**: The local SQLite pool file (`kxstrel-accs.db`) is treated as completely ephemeral. It is rebuilt cleanly from the encrypted database records upon every cold start.
 
 > [!NOTE]
 > **Windows Development Notice**: On Windows systems, the combination of `aiomysql`, the Proactor event loop, and TLS can occasionally raise `WinError 87`. The diagnostics probe `scripts/live_db_check.py` automatically configures the Selector event loop to bypass this Windows platform bug. Linux / Render production environments are unaffected.

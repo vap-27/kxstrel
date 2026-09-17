@@ -5,6 +5,18 @@ All notable changes to this gateway are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-09-17
+
+Operational resilience, upstream rate limit alignment, and account pool cache rename.
+
+### Changed
+
+- **Rate Limits Aligned with Upstream X Limits**: Replaced custom gateway throttling with native X rate limits. `RATE_LIMIT_MCP_PER_MIN` raised to 1200/min and concurrency cap increased to 10. Disabled artificial sleep pacing gaps (`TOOL_MIN_GAP_SECONDS=0.0`, `TOOL_GAP_JITTER_SECONDS=0.0`) so normal user web usage (searching tweets, timelines, reactions, trends) operates at full speed without artificial gateway pauses.
+- **Account Pool Cache Renamed**: Renamed the local ephemeral SQLite pool file from `spectre-accounts.db` to `kxstrel-accs.db` across `config.py` defaults and `Dockerfile`. Added `KXSTREL_DB_PATH` alias support. Upstream library integration pins and package imports remain fully intact.
+- **Instant Startup Session Restoration**: Startup pool hydration now uses persisted database status synchronously (<10ms) and delegates network validation to an asynchronous background task. This completely eliminates cold-boot connection delays and prevents transient false `CONFIG ERROR` statuses on fresh deploys.
+- **MySQL Cursor Warning Suppression**: Suppressed benign MySQL 1050 / `already exists` warnings emitted by `aiomysql` during `CREATE TABLE IF NOT EXISTS schema_migrations`, keeping application logs clean and noise-free.
+- **Admin UI Status & Snapshot Pruning**: Added snapshot deletion with browser confirmation to the backup operations console, and ensured real-time status pill synchronization on view transitions.
+
 ## [2.1.0] - 2026-09-15
 
 Rebrand release. The product is now **Kxstrel X MCP** - a naming change only; no runtime behaviour changed. Two of the renamed identifiers are operationally visible, and they are called out below.

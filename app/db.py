@@ -27,6 +27,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Iterator
 from urllib.parse import unquote, urlparse, urlunparse
+import warnings
+
+# Suppress benign MySQL 1050 "Table already exists" warnings on CREATE TABLE IF NOT EXISTS
+warnings.filterwarnings("ignore", message=r".*already exists.*", category=Warning)
 
 from .logging_setup import get_logger, sanitize_error
 from .models import AccountRecord
