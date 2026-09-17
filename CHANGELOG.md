@@ -16,6 +16,7 @@ Operational resilience, upstream rate limit alignment, and account pool cache re
 - **Instant Startup Session Restoration**: Startup pool hydration now uses persisted database status synchronously (<10ms) and delegates network validation to an asynchronous background task. This completely eliminates cold-boot connection delays and prevents transient false `CONFIG ERROR` statuses on fresh deploys.
 - **MySQL Cursor Warning Suppression**: Suppressed benign MySQL 1050 / `already exists` warnings emitted by `aiomysql` during `CREATE TABLE IF NOT EXISTS schema_migrations`, keeping application logs clean and noise-free.
 - **Admin UI Status & Snapshot Pruning**: Added snapshot deletion with browser confirmation to the backup operations console, and ensured real-time status pill synchronization on view transitions.
+- **Official Brand Logo Integration**: Replaced emoji on GitHub README with the official high-resolution Kxstrel emblem in `assets/logo.png`. Integrated the emblem across the admin console login and sidebar views, and added the official console favicon.
 
 ## [2.1.0] - 2026-09-15
 

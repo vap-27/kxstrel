@@ -1,4 +1,9 @@
-# 🚀 Kxstrel X MCP — Remote X/Twitter MCP Gateway
+<p align="center">
+  <img src="assets/logo.png" alt="Kxstrel X MCP Logo" width="160" height="160" style="border-radius: 20px;">
+</p>
+
+<h1 align="center">Kxstrel X MCP</h1>
+<p align="center"><strong>Remote X/Twitter Model Context Protocol (MCP) Gateway</strong></p>
 
 <p align="center">
   <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-Standard%20v1.0-blue?style=for-the-badge&logo=anthropic" alt="MCP Protocol"></a>

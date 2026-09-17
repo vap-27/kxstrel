@@ -445,6 +445,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 metas = await store.list_accounts_meta()
                 s.accounts_configured = len(metas)
                 s.accounts_enabled = sum(1 for m in metas if m.get("enabled"))
+                if metas and s.x_status in (XStatus.CONFIG_ERROR, XStatus.NOT_CONFIGURED):
+                    from .session_monitor import aggregate_status
+                    enabled_statuses = [
+                        XStatus(m["status"])
+                        for m in metas
+                        if m.get("enabled") and m.get("status")
+                    ]
+                    if enabled_statuses:
+                        s.x_status = aggregate_status(enabled_statuses)
             except Exception:
                 pass
         from . import metrics_setup

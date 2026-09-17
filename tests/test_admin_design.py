@@ -374,7 +374,9 @@ def test_icons_are_inline_monoline_svg():
     strokes = re.findall(r'stroke-width="([\d.]+)"', html)
     assert strokes and all(1.6 <= float(s) <= 1.8 for s in strokes), strokes
     assert 'stroke="currentColor"' in html
-    assert "<img" not in html
+    # Brand logo raster images are permitted; navigation and control icons must remain inline SVGs
+    imgs = re.findall(r'<img[^>]*>', html)
+    assert all('/admin/assets/logo.png' in img for img in imgs)
     assert "background-image" not in _read(CSS_PATH)
 
 
