@@ -1,0 +1,33 @@
+﻿name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build Clean Source Release Zip
+        run: |
+          git archive --format=zip --prefix=kxstrel-2.2.0/ -o kxstrel-v2.2.0.zip HEAD
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" kxstrel-v2.2.0.zip \
+            --title "Kxstrel X MCP ${{ github.ref_name }}" \
+            --notes-file RELEASE_NOTES.md \
+            --latest
