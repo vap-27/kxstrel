@@ -291,6 +291,16 @@ async def lifespan(app: FastAPI):
         try:
             if state.db_ok:
                 metas = await store.list_accounts_meta()
+                # Auto-seed account from environment variables if no account exists yet
+                env_auth = os.environ.get("auth_token") or os.environ.get("AUTH_TOKEN")
+                env_ct0 = os.environ.get("ct0") or os.environ.get("CT0")
+                if not metas and env_auth and env_ct0 and crypto is not None:
+                    log.info("startup: auto-seeding initial X account from environment variables")
+                    enc_auth = crypto.encrypt(env_auth.strip())
+                    enc_ct0 = crypto.encrypt(env_ct0.strip())
+                    await store.upsert_account("primary", enc_auth, enc_ct0, enabled=True)
+                    metas = await store.list_accounts_meta()
+
                 state.accounts_configured = len(metas)
                 state.accounts_enabled = sum(1 for m in metas if m["enabled"])
             # Always restore the enabled accounts into Spectre's local pool.
