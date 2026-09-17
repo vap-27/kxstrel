@@ -1,6 +1,16 @@
 import os
 import tempfile
 
+# Shim for PyMySQL>=1.2.1 where escape_dict was removed but aiomysql<=0.3.2 still imports it
+try:
+    import pymysql.converters as _pm_conv
+    if not hasattr(_pm_conv, "escape_dict"):
+        def _escape_dict(val, charset=None, mapping=None):
+            raise TypeError("dict can not be used as parameter")
+        _pm_conv.escape_dict = _escape_dict
+except Exception:
+    pass
+
 # Test env must be set BEFORE app modules are imported (settings are cached).
 # Tokens are 48 chars: startup now refuses bearer/admin secrets shorter than
 # 32 (app.config.MIN_SECRET_LENGTH), and the previous fixtures were 31.
