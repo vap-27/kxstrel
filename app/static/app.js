@@ -356,6 +356,40 @@ views.overview = async (version = renderVersion) => {
   // clear them here: the one-second ticker owns this registry.
   tickUptimes();
 
+  if (!d.accounts_configured) {
+    v.append(
+      el("h3", { text: "Connect your first X account" }),
+      el("p", { class: "muted", text: "No X account is configured yet. AI clients cannot call Twitter/X tools until at least one account is configured. Add your account credentials below or manage them in the Accounts tab:" })
+    );
+    const qForm = el("form", { class: "inline", id: "quick-acct-form" });
+    qForm.append(
+      el("div", { class: "row" },
+        field("q-label", "Label", "myaccount"),
+        field("q-auth", "auth_token", "X session auth token", "password"),
+        field("q-ct0", "ct0", "160-char ct0 token", "password"),
+        el("button", { class: "primary", type: "submit", text: "Add & connect account" })
+      )
+    );
+    qForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const res = await api("/admin/api/accounts", {
+          method: "POST",
+          body: {
+            label: $("#q-label").value.trim(),
+            auth_token: $("#q-auth").value.trim(),
+            ct0: $("#q-ct0").value.trim(),
+            enabled: true,
+          },
+        });
+        toast(`Account saved — X status: ${res.x_status}`, res.x_status === "CONNECTED" ? "ok" : "error");
+        (res.warnings || []).forEach((w) => toast("Warning: " + w, "error"));
+        route();
+      } catch (err) { toast(err.message, "error"); }
+    });
+    v.append(qForm);
+  }
+
   if (d.last_error) {
     v.append(el("p", { class: "muted", text: "Last error: " + d.last_error }));
   }
@@ -419,57 +453,72 @@ views.accounts = async (version = renderVersion) => {
     } catch (err) { toast(err.message, "error"); }
   });
 
-  let data;
+  let data = { accounts: [] };
+  let loadError = null;
   try { data = await api("/admin/api/accounts"); }
-  catch (e) { if (isCurrentRender(version)) showViewError("Accounts", e); return; }
+  catch (e) { loadError = e; }
   if (!isCurrentRender(version)) return;
 
   const t = table("Configured X accounts");
   t.append(el("thead", {}, el("tr", {},
     th("Label"), th("Enabled"), th("Status"), th("Last check"), th("Last error"), th("Actions"))));
   const tb = el("tbody");
-  if (!data.accounts.length) tb.append(emptyRow(6, "No accounts configured yet."));
-  for (const a of data.accounts) {
-    const actions = el("td", {});
-    const toggle = el("button", { text: a.enabled ? "Disable" : "Enable" });
-    toggle.addEventListener("click", async () => {
-      try {
-        await api(`/admin/api/accounts/${encodeURIComponent(a.label)}`, { method: "PATCH", body: { enabled: !a.enabled } });
-        toast(`Account ${a.label} ${a.enabled ? "disabled" : "enabled"}`, "ok");
-        route();
-      } catch (err) { toast(err.message, "error"); }
-    });
-    const validate = el("button", { text: "Validate", class: "ghost" });
-    validate.addEventListener("click", async () => {
-      try {
-        const r = await api(`/admin/api/validate?label=${encodeURIComponent(a.label)}`, { method: "POST" });
-        toast(`${a.label}: ${r.x_status}`, r.x_status === "CONNECTED" ? "ok" : "error");
-        route();
-      } catch (err) { toast(err.message, "error"); }
-    });
-    const del = el("button", { text: "Delete", class: "danger" });
-    del.addEventListener("click", async () => {
-      if (!confirm(`Delete account '${a.label}'? Stored credentials will be removed.`)) return;
-      try {
-        await api(`/admin/api/accounts/${encodeURIComponent(a.label)}`, { method: "DELETE" });
-        toast(`Account ${a.label} deleted`, "ok");
-        route();
-      } catch (err) { toast(err.message, "error"); }
-    });
-    actions.append(toggle, validate, del);
-    tb.append(el("tr", {},
-      td(a.label, "mono"),
-      el("td", {}, el("span", { class: `pill ${a.enabled ? "ok" : "neutral"}`, text: a.enabled ? "ON" : "OFF" })),
-      el("td", {}, statusPill(a.status)),
-      td(fmtTime(a.last_checked_at)),
-      td(a.last_error || "—", "wrap muted"),
-      actions));
+  if (!data.accounts || !data.accounts.length) {
+    tb.append(emptyRow(6, "No accounts configured yet. Fill out the form above to add your first account."));
+  } else {
+    for (const a of data.accounts) {
+      const actions = el("td", {});
+      const toggle = el("button", { text: a.enabled ? "Disable" : "Enable" });
+      toggle.addEventListener("click", async () => {
+        try {
+          await api(`/admin/api/accounts/${encodeURIComponent(a.label)}`, { method: "PATCH", body: { enabled: !a.enabled } });
+          toast(`Account ${a.label} ${a.enabled ? "disabled" : "enabled"}`, "ok");
+          route();
+        } catch (err) { toast(err.message, "error"); }
+      });
+      const validate = el("button", { text: "Validate", class: "ghost" });
+      validate.addEventListener("click", async () => {
+        try {
+          const r = await api(`/admin/api/validate?label=${encodeURIComponent(a.label)}`, { method: "POST" });
+          toast(`${a.label}: ${r.x_status}`, r.x_status === "CONNECTED" ? "ok" : "error");
+          route();
+        } catch (err) { toast(err.message, "error"); }
+      });
+      const del = el("button", { text: "Delete", class: "danger" });
+      del.addEventListener("click", async () => {
+        if (!confirm(`Delete account '${a.label}'? Stored credentials will be removed.`)) return;
+        try {
+          await api(`/admin/api/accounts/${encodeURIComponent(a.label)}`, { method: "DELETE" });
+          toast(`Account ${a.label} deleted`, "ok");
+          route();
+        } catch (err) { toast(err.message, "error"); }
+      });
+      actions.append(toggle, validate, del);
+      tb.append(el("tr", {},
+        td(a.label, "mono"),
+        el("td", {}, el("span", { class: `pill ${a.enabled ? "ok" : "neutral"}`, text: a.enabled ? "ON" : "OFF" })),
+        el("td", {}, statusPill(a.status)),
+        td(fmtTime(a.last_checked_at)),
+        td(a.last_error || "—", "wrap muted"),
+        actions));
+    }
   }
   t.append(tb);
-  v.replaceChildren(
+
+  const elements = [
     pageTitle("Accounts"),
     el("p", { class: "muted", text: "Credentials are encrypted at rest. Enable/disable and validation apply immediately to every MCP caller." }),
-    form, t);
+    form
+  ];
+  if (loadError) {
+    elements.push(el("p", { class: "error", role: "alert", text: "Notice: " + (loadError.message || "Could not load existing accounts; you can still add/configure accounts above.") }));
+  }
+  if (data.warning) {
+    elements.push(el("p", { class: "error", role: "alert", text: data.warning }));
+  }
+  elements.push(t);
+
+  v.replaceChildren(...elements);
 };
 
 /* ───────────────────────── tools ───────────────────────── */

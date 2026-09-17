@@ -364,7 +364,14 @@ def test_create_statement_is_dialect_correct():
 
 def test_database_name_comes_from_the_same_parser_as_the_backend():
     assert AccountStore("mysql://u:p@h:4000/kxstrel").database_name == "kxstrel"
+    assert AccountStore("mysql://u:p@h:4000/custom_db").database_name == "custom_db"
+    # Placeholder/system databases automatically normalize to kxstrel
+    assert AccountStore("mysql://u:p@h:4000/sys").database_name == "kxstrel"
+    assert AccountStore("mysql://u:p@h:4000/test").database_name == "kxstrel"
+    assert AccountStore("mysql://u:p@h:4000").database_name == "kxstrel"
+    assert AccountStore("mysql://u:p@h:4000/").database_name == "kxstrel"
     assert AccountStore("postgresql://u:p@h:5432/kxstrel").database_name == "kxstrel"
+    assert AccountStore("postgresql://u:p@h:5432/").database_name == "kxstrel"
     assert AccountStore("sqlite:///./data/x.db").database_name == ""
 
 

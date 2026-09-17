@@ -374,8 +374,23 @@ async def connect_and_init(store, settings, *, sleep=None, rand=None,
             if kind == "unsupported_dsn":
                 # Configuration, not transience: retrying cannot help.
                 break
-            if kind == "unknown_database" and not creation_attempted:
+            is_create_denied = (
+                isinstance(exc, Exception)
+                and (
+                    (getattr(exc, "args", None) and len(exc.args) > 0 and exc.args[0] == 1142)
+                    or "CREATE command denied" in str(exc)
+                )
+            )
+            if (kind == "unknown_database" or is_create_denied) and not creation_attempted:
                 creation_attempted = True
+                if is_create_denied and getattr(store, "database_name", "") != "kxstrel":
+                    log.info(
+                        "store[%s] CREATE table denied on %r; automatically switching to dedicated database 'kxstrel'",
+                        label,
+                        getattr(store, "database_name", ""),
+                    )
+                    if hasattr(store, "switch_database"):
+                        store.switch_database("kxstrel")
                 created = await _try_create_database(store, label)
                 if created:
                     outcome.database_created = True

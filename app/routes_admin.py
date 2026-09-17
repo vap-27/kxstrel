@@ -275,11 +275,18 @@ async def _setup_account_impl(request: Request, body: AccountSetup) -> JSONRespo
     try:
         enc_auth = crypto.encrypt(body.auth_token.strip())
         enc_ct0 = crypto.encrypt(body.ct0.strip())
-        await store.upsert_account(body.label, enc_auth, enc_ct0,
-                                   enabled=body.enabled, meta=json.dumps(body.meta or {}))
+        try:
+            await store.upsert_account(body.label, enc_auth, enc_ct0,
+                                       enabled=body.enabled, meta=json.dumps(body.meta or {}))
+        except Exception:
+            # If the store was degraded or disconnected at startup, try one reconnect
+            await store.connect()
+            await store.init_schema()
+            await store.upsert_account(body.label, enc_auth, enc_ct0,
+                                       enabled=body.enabled, meta=json.dumps(body.meta or {}))
     except Exception as exc:
         log.warning("account setup db failure rid=%s: %s", _rid(request), sanitize_error(str(exc)))
-        return _json(503, "database_error", "Could not persist the account")
+        return _json(503, "database_error", f"Could not persist the account: {sanitize_error(str(exc))}")
     x_status, detail = XStatus.NOT_CONFIGURED, None
     if body.enabled:
         try:
@@ -332,7 +339,7 @@ async def list_accounts(request: Request):
         return {"accounts": await request.app.state.store.list_accounts_meta()}
     except Exception as exc:
         log.warning("admin list failed: %s", sanitize_error(str(exc)))
-        return _json(503, "database_error", "Could not read accounts")
+        return {"accounts": [], "warning": "Database is reconnecting or unavailable"}
 
 
 # Legacy path kept for scripts.

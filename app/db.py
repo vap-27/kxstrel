@@ -26,7 +26,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from typing import Iterator
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urlparse, urlunparse
 
 from .logging_setup import get_logger, sanitize_error
 from .models import AccountRecord
@@ -513,16 +513,33 @@ async def _maintenance_connect(store: "AccountStore", maintenance_db: str):
         import aiomysql
 
         p = urlparse(store.database_url)
-        return await aiomysql.connect(
-            host=p.hostname or "127.0.0.1",
-            port=p.port or 3306,
-            user=unquote(p.username or "root"),
-            password=unquote(p.password or ""),
-            db=None,  # no default database: that is the point
-            ssl=_ssl_context(),
-            autocommit=True,
-            connect_timeout=_MAINTENANCE_CONNECT_TIMEOUT_SECONDS,
-        )
+        try:
+            return await aiomysql.connect(
+                host=p.hostname or "127.0.0.1",
+                port=p.port or 3306,
+                user=unquote(p.username or "root"),
+                password=unquote(p.password or ""),
+                db=None,  # no default database: that is the point
+                ssl=_ssl_context(),
+                autocommit=True,
+                connect_timeout=_MAINTENANCE_CONNECT_TIMEOUT_SECONDS,
+            )
+        except Exception:
+            for fallback_db in ("test", "mysql"):
+                try:
+                    return await aiomysql.connect(
+                        host=p.hostname or "127.0.0.1",
+                        port=p.port or 3306,
+                        user=unquote(p.username or "root"),
+                        password=unquote(p.password or ""),
+                        db=fallback_db,
+                        ssl=_ssl_context(),
+                        autocommit=True,
+                        connect_timeout=_MAINTENANCE_CONNECT_TIMEOUT_SECONDS,
+                    )
+                except Exception:
+                    continue
+            raise
     import asyncpg
 
     dsn, kwargs = _pg_maintenance_dsn(store.database_url, maintenance_db)
@@ -743,10 +760,32 @@ class AccountStore:
         self._my_pool = None
         self._sqlite_path = ""
         # The database name from the DSN path, parsed once by the same
-        # urlparse call that decides the backend. Empty for a DSN that names
-        # no database (mysql DSNs default to "test" at connect time, which is
-        # why creation is not attempted for a nameless DSN).
-        self.database_name = "" if self.backend == "sqlite" else parsed.path.lstrip("/")
+        # urlparse call that decides the backend.
+        raw_db_name = "" if self.backend == "sqlite" else parsed.path.lstrip("/")
+        # System catalogs and default placeholders from cloud providers:
+        # Many providers (e.g. TiDB Cloud, MySQL RDS) default the connection string
+        # to "/sys", "/test", or have no path. Creating user tables in system catalogs
+        # is forbidden by MySQL (1142 error). We automatically normalize these to "kxstrel".
+        if self.backend in ("mysql", "postgres"):
+            system_or_placeholders = (
+                "sys", "mysql", "information_schema", "performance_schema",
+                "metrics_schema", "test", ""
+            )
+            if raw_db_name.lower() in system_or_placeholders:
+                normalized_db = "kxstrel"
+                parsed = parsed._replace(path=f"/{normalized_db}")
+                self.database_url = urlunparse(parsed)
+                self.database_name = normalized_db
+                log.info(
+                    "store[%s] DSN referenced placeholder/system database %r; "
+                    "automatically normalized to application database %r",
+                    self.label, raw_db_name, normalized_db
+                )
+            else:
+                self.database_name = raw_db_name
+        else:
+            self.database_name = raw_db_name
+
         if self.backend == "sqlite":
             path = database_url.removeprefix("sqlite:///")
             if path in ("", ":memory:"):
@@ -755,6 +794,15 @@ class AccountStore:
                     "uses short-lived connections; use sqlite:///path.db"
                 )
             self._sqlite_path = path
+
+    def switch_database(self, name: str) -> None:
+        """Switch the target database name and rewrite database_url."""
+        if self.backend == "sqlite":
+            return
+        parsed = urlparse(self.database_url)
+        parsed = parsed._replace(path=f"/{name}")
+        self.database_url = urlunparse(parsed)
+        self.database_name = name
 
     # -- lifecycle ------------------------------------------------------
     async def connect(self) -> None:
