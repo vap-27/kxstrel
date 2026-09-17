@@ -867,6 +867,7 @@ views.backup = async (version = renderVersion) => {
     const tb = el("tbody");
     if (!rows.length) tb.append(emptyRow(7, "No snapshot yet — run a backup."));
     for (const s of rows) {
+      const actions = el("td", {});
       const restore = el("button", { type: "button", class: "ghost", text: "Restore" });
       restore.addEventListener("click", async () => {
         if (!confirm(`Restore snapshot ${s.snapshot_at} back into the primary database? Accounts present in the snapshot are written back; accounts that exist only on the primary are left alone.`)) return;
@@ -880,6 +881,20 @@ views.backup = async (version = renderVersion) => {
           views.backup();
         } catch (err) { toast(err.message, "error"); restore.disabled = false; restore.textContent = "Restore"; }
       });
+
+      const del = el("button", { type: "button", class: "danger", text: "Delete" });
+      del.addEventListener("click", async () => {
+        if (!confirm(`Are you sure you want to delete snapshot ${s.snapshot_at}? This action cannot be undone.`)) return;
+        del.disabled = true;
+        del.textContent = "Deleting…";
+        try {
+          await api(`/admin/api/backup/snapshots/${encodeURIComponent(s.snapshot_at)}`, { method: "DELETE" });
+          toast(`Snapshot ${s.snapshot_at} deleted`, "ok");
+          views.backup();
+        } catch (err) { toast(err.message, "error"); del.disabled = false; del.textContent = "Delete"; }
+      });
+
+      actions.append(restore, del);
       tb.append(el("tr", {},
         td(s.snapshot_at, "mono"),
         td(s.triggered_by || "—"),
@@ -887,7 +902,7 @@ views.backup = async (version = renderVersion) => {
         td(String(s.migration_rows)),
         td(String(s.tool_flag_rows)),
         td(String(s.audit_rows)),
-        el("td", {}, restore)));
+        actions));
     }
     t.append(tb);
     return el("div", { class: "mt" }, t);

@@ -239,6 +239,15 @@ class BackupManager:
             log.warning("could not discard the partial snapshot %s: %s",
                         snapshot_at, sanitize_error(str(exc)))
 
+    async def delete_snapshot(self, snapshot_at: str) -> bool:
+        """Delete one snapshot partition and its index row explicitly."""
+        if self.store is None:
+            return False
+        if not await self.snapshot_exists(snapshot_at):
+            return False
+        await self._delete_snapshot_rows(snapshot_at)
+        return True
+
     # ── reading snapshots (fallback + restore) ─────────────────────────
     async def latest_snapshot(self) -> str | None:
         row = await self.store._fetch_one(

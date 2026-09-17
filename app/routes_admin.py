@@ -587,6 +587,26 @@ async def restore_backup(request: Request, body: RestoreSnapshotBody | None = No
     return {**result, "pool_hydrated": hydrated}
 
 
+@router.delete("/api/backup/snapshots/{snapshot_at:path}", dependencies=[Depends(require_admin_access)])
+async def delete_backup_snapshot(snapshot_at: str, request: Request):
+    await anti_csrf(request)
+    backup = request.app.state.backup_manager
+    if backup is None:
+        return _json(503, "config_error", "Backup is not configured")
+    try:
+        if not await backup.snapshot_exists(snapshot_at):
+            return _json(404, "snapshot_not_found", "No snapshot with that timestamp")
+        deleted = await backup.delete_snapshot(snapshot_at)
+        if not deleted:
+            return _json(404, "snapshot_not_found", "Could not find or delete snapshot")
+    except Exception as exc:
+        log.warning("backup delete failed snapshot_at=%s: %s", snapshot_at, sanitize_error(str(exc)))
+        return _json(503, "delete_failed", "Could not delete the snapshot")
+    await _audit(request, "backup_delete", f"snapshot_at={snapshot_at} ok=True")
+    log.info("backup snapshot deleted snapshot_at=%s rid=%s", snapshot_at, _rid(request))
+    return {"deleted": snapshot_at}
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # API: live MCP clients, tool tester, admin sessions
 # ─────────────────────────────────────────────────────────────────────────

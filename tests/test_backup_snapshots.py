@@ -722,3 +722,30 @@ def test_retention_setting_is_read_from_config_and_documented(tmp_path):
         assert body["x_session"]["restored_from_snapshot"] is None
         status = client.get("/status").json()
         assert status["restored_from_snapshot"] is None
+
+
+def test_admin_delete_snapshot_route(tmp_path):
+    app = _app_with_backup(tmp_path)
+    admin = {"Authorization": f"Bearer {'a' * 48}"}
+    with TestClient(app) as client:
+        # 1. Trigger a backup
+        r = client.post("/admin/api/backup", headers=admin)
+        assert r.status_code == 200
+        overview = client.get("/admin/api/overview", headers=admin).json()
+        snapshots = overview["backup"]["snapshots"]
+        assert len(snapshots) >= 1
+        snapshot_at = snapshots[0]["snapshot_at"]
+
+        # 2. Delete the snapshot
+        del_resp = client.delete(f"/admin/api/backup/snapshots/{snapshot_at}", headers=admin)
+        assert del_resp.status_code == 200
+        assert del_resp.json() == {"deleted": snapshot_at}
+
+        # 3. Verify it is gone
+        overview2 = client.get("/admin/api/overview", headers=admin).json()
+        remaining = [s["snapshot_at"] for s in overview2["backup"]["snapshots"]]
+        assert snapshot_at not in remaining
+
+        # 4. Deleting non-existent snapshot returns 404
+        del_again = client.delete(f"/admin/api/backup/snapshots/{snapshot_at}", headers=admin)
+        assert del_again.status_code == 404
