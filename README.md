@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="Kxstrel X MCP Logo" width="160" height="160" style="border-radius: 20px;">
+  <img src="assets/logo.png" alt="Kxstrel X MCP Logo" width="180">
 </p>
 
 <h1 align="center">Kxstrel X MCP</h1>
