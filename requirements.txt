@@ -13,7 +13,7 @@ asyncpg>=0.31.0
 aiomysql>=0.2
 pymysql<1.2.1
 redis>=8.1.0
-prometheus-client>=0.21
+prometheus-client>=0.26.0
 httpx>=0.27
 
 # Dev / test only.
