@@ -5,7 +5,7 @@ spectre-mcp==1.0.3
 # playwright/selenium anywhere in this tree (see scripts/audit_browserless.py).
 fastapi>=0.141.1
 uvicorn[standard]>=0.30
-fastmcp>=4.0.3
+fastmcp>=4.0.10
 pydantic>=2.10
 pydantic-settings>=2.5
 cryptography>=44
