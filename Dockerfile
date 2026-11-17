@@ -1,7 +1,7 @@
 # Browserless by construction: stock python-slim image, pip packages only.
 # Nothing here installs or downloads Chromium/Chrome/Puppeteer/Playwright/
 # Selenium (enforced by scripts/audit_browserless.py in CI and pre-deploy).
-FROM python:3.14-slim
+FROM python:3.15-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
